@@ -10,7 +10,7 @@ import { Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Optimized "Fluid" Transition (Slightly faster than before, but still smooth)
-const FLUID_TRANSITION = {
+const FLUID_TRANSITION: any = {
   duration: 0.8, // Reduced from 1.2s to 0.8s
   ease: [0.2, 0.8, 0.2, 1] // Slightly snappier bezier curve
 };
@@ -357,7 +357,7 @@ const App: React.FC = () => {
       if (seconds <= 0) return;
       const today = getTodayKey();
       setFocusStats(prev => {
-          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0 };
+          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, date: today };
           return {
               ...prev,
               [today]: {
@@ -371,7 +371,7 @@ const App: React.FC = () => {
   const recordTaskCompletion = () => {
       const today = getTodayKey();
       setFocusStats(prev => {
-          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0 };
+          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, date: today };
           return {
               ...prev,
               [today]: {

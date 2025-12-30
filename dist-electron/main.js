@@ -1,38 +1,28 @@
-import { app, BrowserWindow } from "electron";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-process.env.DIST = path.join(__dirname$1, "../dist");
-process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(__dirname$1, "../public");
-let win;
-function createWindow() {
-  win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+import { app as n, BrowserWindow as s } from "electron";
+import o from "node:path";
+import { fileURLToPath as r } from "node:url";
+const i = o.dirname(r(import.meta.url));
+process.env.DIST = o.join(i, "../dist");
+process.env.VITE_PUBLIC = n.isPackaged ? process.env.DIST : o.join(i, "../public");
+let e;
+function t() {
+  e = new s({
+    icon: o.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     titleBarStyle: "hidden",
     // Frameless window
     trafficLightPosition: { x: 10, y: 10 },
     // Adjust traffic lights
     webPreferences: {
-      preload: path.join(__dirname$1, "preload.js")
+      preload: o.join(i, "preload.js")
     }
-  });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  });
-  if (process.env.VITE_DEV_SERVER_URL) {
-    win.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    win.loadFile(path.join(process.env.DIST, "index.html"));
-  }
+  }), e.webContents.on("did-finish-load", () => {
+    e == null || e.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  }), process.env.VITE_DEV_SERVER_URL ? e.loadURL(process.env.VITE_DEV_SERVER_URL) : e.loadFile(o.join(process.env.DIST, "index.html"));
 }
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+n.on("window-all-closed", () => {
+  process.platform !== "darwin" && n.quit();
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+n.on("activate", () => {
+  s.getAllWindows().length === 0 && t();
 });
-app.whenReady().then(createWindow);
+n.whenReady().then(t);

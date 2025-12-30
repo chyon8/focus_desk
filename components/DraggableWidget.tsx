@@ -317,7 +317,7 @@ export const DraggableWidget: React.FC<Props> = ({
                 bringToFront(widget.id);
               }}
             >
-              <GripHorizontal size={16} dropShadow={isPhoto ? "0 1px 2px rgba(0,0,0,0.5)" : undefined} />
+              <GripHorizontal size={16} style={{ filter: isPhoto ? "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" : undefined }} />
             </div>
             <div className="flex items-center gap-1">
               <button 
