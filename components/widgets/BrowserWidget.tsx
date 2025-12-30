@@ -32,34 +32,53 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
       const bounds = containerRef.current.getBoundingClientRect();
       
       // Only update if bounds changed significantly (ignore sub-pixel jitter)
-      if (!previousBounds.current || 
-          Math.abs(bounds.x - previousBounds.current.x) > 1 ||
+      // Check sidebar overlap
+      const sidebar = document.getElementById('app-sidebar');
+      let sidebarRight = 0;
+      if (sidebar) {
+          const sbRect = sidebar.getBoundingClientRect();
+          // Use right edge of sidebar as the boundary
+          sidebarRight = sbRect.right;
+      }
+
+      let finalX = bounds.x;
+      let finalWidth = bounds.width;
+
+      // If sidebar overlaps from the left
+      if (finalX < sidebarRight) {
+          const overlap = sidebarRight - finalX;
+          finalX += overlap;
+          finalWidth -= overlap;
+      }
+
+      const hasChanged = !previousBounds.current || 
+          Math.abs(finalX - previousBounds.current.x) > 1 ||
           Math.abs(bounds.y - previousBounds.current.y) > 1 ||
-          Math.abs(bounds.width - previousBounds.current.width) > 1 ||
-          Math.abs(bounds.height - previousBounds.current.height) > 1) {
-        
-        // IMPORTANT: If no URL, we don't show the view (hide it), so bounds don't matter much.
-        // But if URL exists, we update bounds.
-        // We leave a small gap at the bottom-right for the resize handle of the parent widget.
-        // Parent DraggableWidget handle is at bottom-right.
-        const gripSize = 16; 
-        
-        // We can just subtract a bit from height to reveal the resize handle area at the bottom.
-        // Or essentially, just render the view slightly smaller inside the container.
+          Math.abs(finalWidth - previousBounds.current.width) > 1 ||
+          Math.abs(bounds.height - previousBounds.current.height) > 1;
+
+      if (hasChanged) {
+        // Convert to Electron-friendly integer rect
         const rect = {
-          x: Math.round(bounds.x),
+          x: Math.round(finalX),
           y: Math.round(bounds.y),
-          width: Math.round(bounds.width), // Full width
-          height: Math.round(bounds.height) - 10 // Leave 10px at bottom for resize handle visibility
+          width: Math.max(0, Math.round(finalWidth)), // Ensure non-negative
+          height: Math.round(bounds.height) // Full height of containerRef
         };
 
-        if (data.url) {
+        // Cache the *calculated* bounds (the ones we sent), not the raw DOM bounds, 
+        // to properly detect changes in the *result*.
+        // Actually, we should check raw DOM change + sidebar change.
+        // Simplest is just always send if computed rect changes.
+        
+        if (data.url && rect.width > 0) { // Only show if width is positive
             window.ipcRenderer.invoke('browser-view:update-bounds', data.id, rect).catch(console.error);
         } else {
-            // If no URL/Start Page, hide the view
             window.ipcRenderer.invoke('browser-view:hide', data.id).catch(console.error);
         }
-        previousBounds.current = bounds;
+        
+        // Store current calculated bounds for comparison
+        previousBounds.current = new DOMRect(rect.x, rect.y, rect.width, bounds.height);
       }
     }
     requestRef.current = requestAnimationFrame(syncLayout);
@@ -258,6 +277,21 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
                 </div>
              </div>
          )}
+      </div>
+
+      {/* Footer Status Bar - Ensures Resize Handle (bottom-right) is always accessible */}
+      <div className="h-6 bg-[#18181b] border-t border-white/5 flex items-center px-3 gap-2 relative z-20 shrink-0">
+         <div className="flex items-center gap-1.5 opacity-50 hover:opacity-100 transition-opacity">
+            <div className={`w-1.5 h-1.5 rounded-full ${data.url.startsWith('https') ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            <span className="text-[10px] text-white/50 font-medium">
+                {data.url.startsWith('https') ? 'Secure' : 'Not Secure'}
+            </span>
+         </div>
+
+         <div className="flex-1" />
+
+         {/* Spacer for Resize Handle */}
+         <div className="w-4" />
       </div>
     </div>
   );

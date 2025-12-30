@@ -84,6 +84,7 @@ export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace
             exit={{ x: -300, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed left-0 top-0 bottom-0 w-64 z-[6000]"
+            id="app-sidebar"
           >
             <div 
                 className="w-full h-full flex flex-col p-3 relative shadow-[4px_0_24px_rgba(0,0,0,0.2)] backdrop-blur-3xl transition-colors duration-700"
