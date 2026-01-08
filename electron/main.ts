@@ -38,6 +38,7 @@ function createWindow() {
     trafficLightPosition: { x: 10, y: 10 }, // Adjust traffic lights
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      webviewTag: true
     },
   })
 
@@ -145,12 +146,29 @@ ipcMain.handle('browser-view:zoom', (_, id: string, factor: number) => {
   }
 })
 
+// ... existing browser-view handlers ...
 ipcMain.handle('browser-view:hide', (_, id: string) => {
     const view = views.get(id)
     if (view && win) {
         // Hide by moving off-screen or zero size
         view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
     }
+})
+
+// --- Electron Store IPC Handlers ---
+import Store from 'electron-store'
+const store = new Store()
+
+ipcMain.handle('store:get', (_event, key: string) => {
+  return store.get(key)
+})
+
+ipcMain.handle('store:set', (_event, key: string, value: any) => {
+  store.set(key, value)
+})
+
+ipcMain.handle('store:delete', (_event, key: string) => {
+  store.delete(key)
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

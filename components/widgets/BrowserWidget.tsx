@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserWidgetData } from '../../types';
-import { Search, RotateCw, ArrowLeft, ArrowRight, Lock, Globe, ShieldCheck, Compass, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Search, RotateCw, ArrowLeft, ArrowRight, Lock, Globe, ShieldCheck, Compass, X, ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
 
 interface Props {
   data: BrowserWidgetData;
   updateWidget: (id: string, updates: Partial<BrowserWidgetData>) => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
+  removeWidget?: () => void;
+  isCovered?: boolean;
 }
 
 // Window augmentation for TypeScript
@@ -17,119 +21,61 @@ declare global {
   }
 }
 
-export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
+export const BrowserWidget: React.FC<Props> = ({ data, updateWidget, isMaximized, onToggleMaximize, removeWidget, isCovered }) => {
   const [inputUrl, setInputUrl] = useState(data.url);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const requestRef = useRef<number | null>(null);
-  const previousBounds = useRef<DOMRect | null>(null);
+  const webviewRef = useRef<any>(null); // Use any because standard type defs for webview methods are tricky
   
   // Zoom State
   const [zoomLevel, setZoomLevel] = useState(1.0); // 1.0 = 100%
 
-  // Sync Layout Loop
-  const syncLayout = useCallback(() => {
-    if (containerRef.current) {
-      const bounds = containerRef.current.getBoundingClientRect();
-      
-      // Only update if bounds changed significantly (ignore sub-pixel jitter)
-      // Check sidebar overlap
-      const sidebar = document.getElementById('app-sidebar');
-      let sidebarRight = 0;
-      if (sidebar) {
-          const sbRect = sidebar.getBoundingClientRect();
-          // Use right edge of sidebar as the boundary
-          sidebarRight = sbRect.right;
-      }
+  // Setup Webview Listeners
+  useEffect(() => {
+    const webview = webviewRef.current;
+    if (!webview) return;
 
-      let finalX = bounds.x;
-      let finalWidth = bounds.width;
-
-      // If sidebar overlaps from the left
-      if (finalX < sidebarRight) {
-          const overlap = sidebarRight - finalX;
-          finalX += overlap;
-          finalWidth -= overlap;
-      }
-
-      const hasChanged = !previousBounds.current || 
-          Math.abs(finalX - previousBounds.current.x) > 1 ||
-          Math.abs(bounds.y - previousBounds.current.y) > 1 ||
-          Math.abs(finalWidth - previousBounds.current.width) > 1 ||
-          Math.abs(bounds.height - previousBounds.current.height) > 1;
-
-      if (hasChanged) {
-        // Convert to Electron-friendly integer rect
-        const rect = {
-          x: Math.round(finalX),
-          y: Math.round(bounds.y),
-          width: Math.max(0, Math.round(finalWidth)), // Ensure non-negative
-          height: Math.round(bounds.height) // Full height of containerRef
-        };
-
-        // Cache the *calculated* bounds (the ones we sent), not the raw DOM bounds, 
-        // to properly detect changes in the *result*.
-        // Actually, we should check raw DOM change + sidebar change.
-        // Simplest is just always send if computed rect changes.
-        
-        if (data.url && rect.width > 0) { // Only show if width is positive
-            window.ipcRenderer.invoke('browser-view:update-bounds', data.id, rect).catch(console.error);
-        } else {
-            window.ipcRenderer.invoke('browser-view:hide', data.id).catch(console.error);
+    const handleDidNavigate = (e: any) => {
+        if (e.url !== data.url) {
+            updateWidget(data.id, { url: e.url });
+            setInputUrl(e.url);
         }
-        
-        // Store current calculated bounds for comparison
-        previousBounds.current = new DOMRect(rect.x, rect.y, rect.width, bounds.height);
-      }
-    }
-    requestRef.current = requestAnimationFrame(syncLayout);
-  }, [data.id, data.url]);
-
-  // Initial Setup & Cleanup
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    // 1. Initial Creation (Only if URL exists, but we create it anyway and hide/show via syncLayout)
-    const bounds = containerRef.current.getBoundingClientRect();
-    const rect = {
-        x: Math.round(bounds.x),
-        y: Math.round(bounds.y),
-        width: Math.round(bounds.width),
-        height: Math.round(bounds.height)
     };
-    
-    // Create view
-    window.ipcRenderer.invoke('browser-view:create', data.id, data.url, rect);
 
-    // 2. Start Sync Loop
-    requestRef.current = requestAnimationFrame(syncLayout);
+    // Wait for ready
+    const handleDomReady = () => {
+        // Apply zoom
+        webview.setZoomFactor(zoomLevel);
+    };
 
-    // 3. Cleanup on Unmount
+    webview.addEventListener('did-navigate', handleDidNavigate);
+    webview.addEventListener('did-navigate-in-page', handleDidNavigate); // Handle hash changes
+    webview.addEventListener('dom-ready', handleDomReady);
+
     return () => {
-      if (requestRef.current !== null) {
-        cancelAnimationFrame(requestRef.current);
-      }
-      window.ipcRenderer.invoke('browser-view:destroy', data.id);
+        webview.removeEventListener('did-navigate', handleDidNavigate);
+        webview.removeEventListener('did-navigate-in-page', handleDidNavigate);
+        webview.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [data.id]); // Re-create if ID changes (rare)
+  }, [data.id, updateWidget, zoomLevel]); // Re-bind on ID or zoom change
 
-  // Initial Visibility Sync
+  // Update URL from Props
   useEffect(() => {
-    if (!data.url) {
-        window.ipcRenderer.invoke('browser-view:hide', data.id);
-    } else {
-        // Force a bounds update to show it
-        // The syncLayout loop will pick this up next frame, but we can trigger immediate load
-        window.ipcRenderer.invoke('browser-view:load', data.id, data.url);
+    if (data.url !== inputUrl) {
+        setInputUrl(data.url);
     }
-  }, [data.url, data.id]);
+    // Note: We don't force webview SRC update here to avoid reloading on every keystroke/external change
+    // unless it's a completely different navigation initiated externally.
+  }, [data.url]);
 
-
-  // Update Zoom
+  // Handle Zoom Effect
   useEffect(() => {
-      if (data.url) {
-          window.ipcRenderer.invoke('browser-view:zoom', data.id, zoomLevel);
+      if (webviewRef.current) {
+          // Check if ready
+          try {
+             webviewRef.current.setZoomFactor(zoomLevel);
+          } catch(e) {/* ignore if not ready */}
       }
-  }, [zoomLevel, data.id, data.url]);
+  }, [zoomLevel]);
+
 
   // Navigate Handler
   const handleNavigate = (urlOverride?: string) => {
@@ -142,8 +88,10 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
     
     setInputUrl(url);
     updateWidget(data.id, { url });
-    // View loading is handled by effect or direct invoke
-    window.ipcRenderer.invoke('browser-view:load', data.id, url);
+    
+    if (webviewRef.current) {
+        webviewRef.current.src = url;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -153,7 +101,15 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
   };
 
   const handleControl = (action: 'back' | 'forward' | 'reload' | 'stop') => {
-      window.ipcRenderer.invoke('browser-view:control', data.id, action);
+      const webview = webviewRef.current;
+      if (!webview) return;
+      
+      switch (action) {
+        case 'back': if (webview.canGoBack()) webview.goBack(); break;
+        case 'forward': if (webview.canGoForward()) webview.goForward(); break;
+        case 'reload': webview.reload(); break;
+        case 'stop': webview.stop(); break;
+      }
   };
 
   const handleZoom = (delta: number) => {
@@ -162,14 +118,6 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
           return parseFloat(next.toFixed(1));
       });
   };
-
-  // Keep input synchronized if data changes externally
-  useEffect(() => {
-      if (data.url !== inputUrl) {
-          setInputUrl(data.url);
-      }
-  }, [data.url]);
-
 
   // Quick Link Component
   const QuickLink = ({ name, url, icon }: { name: string, url: string, icon: React.ReactNode }) => (
@@ -188,6 +136,27 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
     <div className="h-full w-full flex flex-col bg-[#1E1E24] overflow-hidden">
       {/* Modern Toolbar */}
       <div className="flex items-center gap-2 p-2 border-b border-white/5 bg-black/20 backdrop-blur-md relative z-10 drag-handle">
+        {/* Window Controls (Red/Yellow/Green style) */}
+        <div className="flex items-center gap-1.5 mr-2">
+             <button 
+                onClick={(e) => { e.stopPropagation(); removeWidget?.(); }} 
+                className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors flex items-center justify-center group"
+             >
+                <X size={8} className="text-black/50 opacity-0 group-hover:opacity-100" />
+             </button>
+             <button 
+                onClick={(e) => { e.stopPropagation(); onToggleMaximize?.(); }} 
+                className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 transition-colors flex items-center justify-center group"
+             >
+                <Minimize2 size={8} className="text-black/50 opacity-0 group-hover:opacity-100" />
+             </button>
+             <button 
+                onClick={(e) => { e.stopPropagation(); onToggleMaximize?.(); }}
+                className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors flex items-center justify-center group"
+             >
+                <Maximize2 size={8} className="text-black/50 opacity-0 group-hover:opacity-100" />
+             </button>
+        </div>
         
         {/* Navigation Controls */}
         <div className="flex items-center">
@@ -238,9 +207,8 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
         </div>
       </div>
 
-      {/* Content Area - Placeholder for WebContentsView */}
+      {/* Content Area - Using <webview> tag */}
       <div className="flex-1 relative bg-[#0F0F12] w-full h-full">
-         <div ref={containerRef} className="absolute inset-0 w-full h-full" />
          
          {/* Start Page Overlay - Visible only when NO URL is set */}
          {!data.url && (
@@ -277,6 +245,17 @@ export const BrowserWidget: React.FC<Props> = ({ data, updateWidget }) => {
                 </div>
              </div>
          )}
+         
+         {/* Webview Element */}
+         {/* Only render if we have a URL (or render hidden, but start page handles 'no url' state) */}
+         <webview 
+             ref={webviewRef}
+             src={data.url}
+             // @ts-ignore
+             allowpopups="true" 
+             className={`w-full h-full ${!data.url ? 'hidden' : ''}`}
+             style={{ display: 'inline-flex', width: '100%', height: '100%' }}
+         />
       </div>
 
       {/* Footer Status Bar - Ensures Resize Handle (bottom-right) is always accessible */}

@@ -57,6 +57,7 @@ interface Props {
     setRadioVolume: (vol: number) => void;
     nextStation: () => void;
   };
+  isCovered?: boolean;
 }
 
 export const DraggableWidget: React.FC<Props> = ({ 
@@ -74,7 +75,8 @@ export const DraggableWidget: React.FC<Props> = ({
   onCompleteTask,
   updateSession,
   radioState,
-  radioControls
+  radioControls,
+  isCovered
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
@@ -180,7 +182,16 @@ export const DraggableWidget: React.FC<Props> = ({
       case 'TIMER': return <TimerWidget data={widget as TimerWidgetData} updateWidget={updateWidget} />;
       case 'BOOKMARKS': return <BookmarksWidget data={widget as BookmarksWidgetData} updateWidget={updateWidget} />;
       case 'EDITOR': return <EditorWidget data={widget as EditorWidgetData} updateWidget={updateWidget} />;
-      case 'BROWSER': return <BrowserWidget data={widget as BrowserWidgetData} updateWidget={updateWidget} />;
+      case 'BROWSER': return (
+        <BrowserWidget 
+          data={widget as BrowserWidgetData} 
+          updateWidget={updateWidget}
+          isMaximized={isMaximized}
+          onToggleMaximize={onToggleMaximize}
+          removeWidget={() => removeWidget(widget.id)}
+          isCovered={isCovered}
+        />
+      );
       case 'CANVAS': return <CanvasWidget data={widget as CanvasWidgetData} updateWidget={updateWidget} />;
       case 'READER': return <ReaderWidget data={widget as ReaderWidgetData} updateWidget={updateWidget} />;
       case 'PHOTO': return <PhotoWidget data={widget as PhotoWidgetData} updateWidget={updateWidget} />;
@@ -241,7 +252,9 @@ export const DraggableWidget: React.FC<Props> = ({
     bringToFront(widget.id);
 
     // 2. Prevent drag if maximizing, resizing, or in compact mode
-    if (isResizing || isMaximized || isCompactMode) return;
+    // IMPORTANT: In maximized mode, we return early to let button clicks work properly
+    if (isResizing || isCompactMode) return;
+    if (isMaximized) return; // Early exit for fullscreen - don't interfere with button clicks
 
     // 3. Prevent widget drag if interacting with inputs/buttons
     // This allows selecting text or clicking buttons without moving the widget.
@@ -306,11 +319,11 @@ export const DraggableWidget: React.FC<Props> = ({
         className={`w-full h-full relative group flex flex-col ${overflowClass} transition-shadow duration-200 border-white/20 ${!isMaximized && !isPhoto && !isCompactMode && 'hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]'} ${isMaximized ? '!rounded-none !border-0' : ''} ${glassOverrideClass}`}
       >
         
-        {/* Header Controls - Hide during Focus Mode (Compact) */}
-        {!isCompactMode && (
-          <div className={`absolute top-0 left-0 right-0 h-8 flex justify-between items-center px-2 z-40 transition-opacity ${isPhoto ? 'bg-gradient-to-b from-black/50 to-transparent' : ''} ${isMaximized ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        {/* Header Controls - Hide during Focus Mode (Compact) OR for Browser (Custom Header) */}
+        {!isCompactMode && widget.type !== 'BROWSER' && (
+          <div className={`absolute top-0 left-0 right-0 h-10 flex justify-between items-center px-3 z-50 pointer-events-auto transition-opacity ${isPhoto ? 'bg-gradient-to-b from-black/50 to-transparent' : ''} ${isMaximized ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             <div 
-              className={`cursor-move p-1 ${controlGripClass} ${isMaximized ? 'opacity-0 pointer-events-none' : ''}`}
+              className={`cursor-move p-2 ${controlGripClass} ${isMaximized ? 'opacity-0 pointer-events-none' : ''}`}
               onPointerDown={(e) => {
                 // Explicit header drag handle
                 dragControls.start(e);
@@ -319,20 +332,20 @@ export const DraggableWidget: React.FC<Props> = ({
             >
               <GripHorizontal size={16} style={{ filter: isPhoto ? "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" : undefined }} />
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button 
                 onClick={(e) => { e.stopPropagation(); onToggleMaximize(); }}
-                className={`p-1 transition-colors rounded ${controlBtnClass}`}
+                className={`p-2 transition-colors rounded-lg ${controlBtnClass}`}
                 title={isMaximized ? "Restore" : "Fullscreen"}
               >
-                {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
               </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); removeWidget(widget.id); }}
-                className={`p-1 transition-colors rounded ${isNewWidget ? (isDarkTheme ? 'text-zinc-600 hover:text-red-400 hover:bg-red-900/20' : 'text-slate-400 hover:text-red-500 hover:bg-red-50') : 'text-white/50 hover:text-red-300 hover:bg-white/10'}`}
+                className={`p-2 transition-colors rounded-lg ${isNewWidget ? (isDarkTheme ? 'text-zinc-600 hover:text-red-400 hover:bg-red-900/20' : 'text-slate-400 hover:text-red-500 hover:bg-red-50') : 'text-white/50 hover:text-red-300 hover:bg-white/10'}`}
                 title="Close Widget"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
           </div>
@@ -340,7 +353,7 @@ export const DraggableWidget: React.FC<Props> = ({
 
         <div 
           className="flex-1 overflow-hidden pt-0" 
-          style={{ paddingTop: isPhoto || isNewWidget || isCompactMode ? 0 : '0.5rem' }}
+          style={{ paddingTop: isPhoto || isNewWidget || isCompactMode || widget.type === 'BROWSER' ? 0 : '0.5rem' }}
         >
             {renderContent()}
         </div>

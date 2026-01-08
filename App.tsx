@@ -55,29 +55,14 @@ const getTodayKey = () => {
 };
 
 const App: React.FC = () => {
-  const [spaces, setSpaces] = useState<Space[]>(() => {
-    try {
-      // Bumped to v13 to ensure Task widget appears by default for this update
-      const saved = localStorage.getItem('focus-window-spaces-v13');
-      return saved ? JSON.parse(saved) : INITIAL_SPACES;
-    } catch (e) {
-      return INITIAL_SPACES;
-    }
-  });
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const [spaces, setSpaces] = useState<Space[]>(INITIAL_SPACES);
   
-  const [activeSpaceId, setActiveSpaceId] = useState<string>(() => {
-    return localStorage.getItem('focus-window-active-id-v13') || INITIAL_SPACES[0].id;
-  });
+  const [activeSpaceId, setActiveSpaceId] = useState<string>(INITIAL_SPACES[0].id);
 
   // Focus Stats Logic
-  const [focusStats, setFocusStats] = useState<FocusStats>(() => {
-      try {
-          const saved = localStorage.getItem('focus-window-stats');
-          return saved ? JSON.parse(saved) : {};
-      } catch (e) {
-          return {};
-      }
-  });
+  const [focusStats, setFocusStats] = useState<FocusStats>({});
 
   const [showInsights, setShowInsights] = useState(false);
 
@@ -109,21 +94,64 @@ const App: React.FC = () => {
   
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Load Data on Mount
   useEffect(() => {
-    try {
+    const loadData = async () => {
+      if (window.store) {
+        try {
+          const savedSpaces = await window.store.get('focus-window-spaces-v13');
+          const savedActiveId = await window.store.get('focus-window-active-id-v13');
+          const savedStats = await window.store.get('focus-window-stats');
+
+          if (savedSpaces) setSpaces(savedSpaces);
+          if (savedActiveId) setActiveSpaceId(savedActiveId);
+          if (savedStats) setFocusStats(savedStats);
+        } catch (e) {
+          console.error("Failed to load from store", e);
+        }
+      } else {
+        // Fallback for browser dev (keep using localStorage if window.store is missing)
+        try {
+           const savedSpaces = localStorage.getItem('focus-window-spaces-v13');
+           const savedActiveId = localStorage.getItem('focus-window-active-id-v13');
+           const savedStats = localStorage.getItem('focus-window-stats');
+           
+           if (savedSpaces) setSpaces(JSON.parse(savedSpaces));
+           if (savedActiveId) setActiveSpaceId(savedActiveId);
+           if (savedStats) setFocusStats(JSON.parse(savedStats));
+        } catch(e) { console.error(e); }
+      }
+      setIsLoaded(true);
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (window.store) {
+      window.store.set('focus-window-spaces-v13', spaces);
+    } else {
       localStorage.setItem('focus-window-spaces-v13', JSON.stringify(spaces));
-    } catch (e) {
-      console.error("Storage full or error", e);
     }
-  }, [spaces]);
+  }, [spaces, isLoaded]);
 
   useEffect(() => {
-    localStorage.setItem('focus-window-active-id-v13', activeSpaceId);
-  }, [activeSpaceId]);
+    if (!isLoaded) return;
+    if (window.store) {
+      window.store.set('focus-window-active-id-v13', activeSpaceId);
+    } else {
+      localStorage.setItem('focus-window-active-id-v13', activeSpaceId);
+    }
+  }, [activeSpaceId, isLoaded]);
 
   useEffect(() => {
-      localStorage.setItem('focus-window-stats', JSON.stringify(focusStats));
-  }, [focusStats]);
+      if (!isLoaded) return;
+      if (window.store) {
+        window.store.set('focus-window-stats', focusStats);
+      } else {
+        localStorage.setItem('focus-window-stats', JSON.stringify(focusStats));
+      }
+  }, [focusStats, isLoaded]);
 
   // Sync Focus Mode with Session
   // REVISED LOGIC: If session is active BUT paused, exit focus mode (show UI).
@@ -470,6 +498,7 @@ const App: React.FC = () => {
               updateSession={(updates) => setFocusSession(prev => ({ ...prev, ...updates }))}
               radioState={radioState}
               radioControls={{ toggleRadio, setRadioVolume, nextStation }}
+              isCovered={!!maximizedWidgetId && maximizedWidgetId !== widget.id}
           />
         ))}
       </div>

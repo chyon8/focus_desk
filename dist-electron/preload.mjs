@@ -16,6 +16,11 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
   invoke(...args) {
     const [channel, ...omit] = args;
     return electron.ipcRenderer.invoke(channel, ...omit);
-  }
+  },
   // You can expose other weird stuff too
+  store: {
+    get: (key) => electron.ipcRenderer.invoke("store:get", key),
+    set: (key, value) => electron.ipcRenderer.invoke("store:set", key, value),
+    delete: (key) => electron.ipcRenderer.invoke("store:delete", key)
+  }
 });
