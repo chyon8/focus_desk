@@ -1,6 +1,6 @@
 
 
-export type WidgetType = 'MEMO' | 'TODO' | 'TIMER' | 'BOOKMARKS' | 'EDITOR' | 'BROWSER' | 'CANVAS' | 'READER' | 'PHOTO' | 'NEW_MEMO' | 'NEW_EDITOR' | 'CALENDAR' | 'CLOCK' | 'KANBAN';
+export type WidgetType = 'MEMO' | 'TODO' | 'TIMER' | 'BOOKMARKS' | 'EDITOR' | 'BROWSER' | 'CANVAS' | 'READER' | 'PHOTO' | 'NEW_MEMO' | 'NEW_EDITOR' | 'CALENDAR' | 'CLOCK' | 'KANBAN' | 'YOUTUBE_MUSIC';
 
 export interface WidgetPosition {
   x: number;
@@ -146,7 +146,11 @@ export interface PhotoWidgetData extends BaseWidget {
   frameColor?: string;
 }
 
-export type Widget = MemoWidgetData | TodoWidgetData | TimerWidgetData | BookmarksWidgetData | EditorWidgetData | BrowserWidgetData | CanvasWidgetData | ReaderWidgetData | PhotoWidgetData | NewMemoWidgetData | NewEditorWidgetData | CalendarWidgetData | ClockWidgetData | KanbanWidgetData;
+export interface YoutubeMusicWidgetData extends BaseWidget {
+  type: 'YOUTUBE_MUSIC';
+}
+
+export type Widget = MemoWidgetData | TodoWidgetData | TimerWidgetData | BookmarksWidgetData | EditorWidgetData | BrowserWidgetData | CanvasWidgetData | ReaderWidgetData | PhotoWidgetData | NewMemoWidgetData | NewEditorWidgetData | CalendarWidgetData | ClockWidgetData | KanbanWidgetData | YoutubeMusicWidgetData;
 
 export interface AmbienceSettings {
   volumeRain: number;
@@ -232,15 +236,12 @@ export const RADIO_STATIONS: RadioStation[] = [
     }
 ];
 
-export const DEFAULT_BACKGROUNDS = {
-  LOFI: [
+// Restored original backgrounds as requested, merged into a single list
+export const DEFAULT_BACKGROUNDS = [
     'https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=2070&auto=format&fit=crop', // Cozy Room
     'https://images.unsplash.com/photo-1518558997970-4dadc13c87e6?q=80&w=2070&auto=format&fit=crop', // Night City
-    'https://images.unsplash.com/photo-1629196911514-cfd8d628b26e?q=80&w=2148&auto=format&fit=crop' // Illustration style
-  ],
-  REALISTIC: [
+    'https://images.unsplash.com/photo-1629196911514-cfd8d628b26e?q=80&w=2148&auto=format&fit=crop', // Illustration style
     'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1948&auto=format&fit=crop', // Nature
     'https://images.unsplash.com/photo-1515266591878-5a89fb196856?q=80&w=1974&auto=format&fit=crop', // Rain Glass
     'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?q=80&w=1965&auto=format&fit=crop' // Cafe
-  ]
-};
+];

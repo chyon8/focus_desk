@@ -10,13 +10,13 @@ var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 var _validator, _encryptionKey, _options, _defaultValues, _isInMigration, _watcher, _watchFile, _debouncedChangeHandler, _Conf_instances, prepareOptions_fn, setupValidator_fn, captureSchemaDefaults_fn, applyDefaultValues_fn, configureSerialization_fn, resolvePath_fn, initializeStore_fn, runMigrations_fn;
-import electron, { app as app$1, ipcMain as ipcMain$1, BrowserWindow, WebContentsView } from "electron";
+import electron, { protocol, ipcMain as ipcMain$1, app as app$1, net, BrowserWindow, WebContentsView } from "electron";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
 import process$1 from "node:process";
 import { promisify, isDeepStrictEqual } from "node:util";
-import fs from "node:fs";
-import crypto from "node:crypto";
 import assert from "node:assert";
 import os from "node:os";
 import "node:events";
@@ -503,7 +503,7 @@ if (!IS_WINDOWS) {
 if (IS_LINUX) {
   Signals.push("SIGIO", "SIGPOLL", "SIGPWR", "SIGSTKFLT");
 }
-class Interceptor {
+let Interceptor$1 = class Interceptor {
   /* CONSTRUCTOR */
   constructor() {
     this.callbacks = /* @__PURE__ */ new Set();
@@ -540,9 +540,9 @@ class Interceptor {
     };
     this.hook();
   }
-}
-const Interceptor$1 = new Interceptor();
-const whenExit = Interceptor$1.register;
+};
+const Interceptor2 = new Interceptor$1();
+const whenExit = Interceptor2.register;
 const Temp = {
   /* VARIABLES */
   store: {},
@@ -10648,6 +10648,50 @@ class ElectronStore extends Conf {
   }
 }
 const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+protocol.registerSchemesAsPrivileged([
+  { scheme: "local-resource", privileges: { secure: true, supportFetchAPI: true, standard: true, bypassCSP: true, stream: true } }
+]);
+ipcMain$1.handle("save-image", async (_, arrayBuffer, name) => {
+  const userDataPath = app$1.getPath("userData");
+  const backgroundsDir = path.join(userDataPath, "backgrounds");
+  if (!fs.existsSync(backgroundsDir)) {
+    fs.mkdirSync(backgroundsDir, { recursive: true });
+  }
+  const ext = path.extname(name);
+  const hash = crypto.createHash("md5").update(Buffer.from(arrayBuffer)).digest("hex");
+  const filename = `${hash}${ext}`;
+  const filePath = path.join(backgroundsDir, filename);
+  fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+  return `local-resource://backgrounds/${filename}`;
+});
+ipcMain$1.handle("get-custom-images", async () => {
+  const userDataPath = app$1.getPath("userData");
+  const backgroundsDir = path.join(userDataPath, "backgrounds");
+  if (!fs.existsSync(backgroundsDir)) return [];
+  const files = fs.readdirSync(backgroundsDir);
+  return files.map((file) => `local-resource://backgrounds/${file}`);
+});
+ipcMain$1.handle("delete-custom-image", async (_, url) => {
+  const filename = url.replace("local-resource://backgrounds/", "");
+  const userDataPath = app$1.getPath("userData");
+  const filePath = path.join(userDataPath, "backgrounds", filename);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    return true;
+  }
+  return false;
+});
+app$1.whenReady().then(() => {
+  protocol.handle("local-resource", (request) => {
+    const url = request.url.replace("local-resource://", "");
+    const relativePath = decodeURIComponent(url);
+    const cleanPath = relativePath.startsWith("backgrounds/") ? relativePath.replace("backgrounds/", "") : relativePath;
+    const userDataPath = app$1.getPath("userData");
+    const fullPath = path.join(userDataPath, "backgrounds", cleanPath);
+    return net.fetch("file://" + fullPath);
+  });
+  createWindow();
+});
 process.env.DIST = path.join(__dirname$1, "../dist");
 process.env.VITE_PUBLIC = app$1.isPackaged ? process.env.DIST : path.join(__dirname$1, "../public");
 let win;
@@ -10778,4 +10822,3 @@ app$1.on("activate", () => {
     createWindow();
   }
 });
-app$1.whenReady().then(createWindow);

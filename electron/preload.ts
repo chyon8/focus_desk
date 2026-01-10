@@ -24,5 +24,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     get: (key: string) => ipcRenderer.invoke('store:get', key),
     set: (key: string, value: any) => ipcRenderer.invoke('store:set', key, value),
     delete: (key: string) => ipcRenderer.invoke('store:delete', key),
+  },
+  gallery: {
+    getImages: () => ipcRenderer.invoke('get-custom-images'),
+    deleteImage: (url: string) => ipcRenderer.invoke('delete-custom-image', url),
   }
 })

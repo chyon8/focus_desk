@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Space, DEFAULT_BACKGROUNDS, RADIO_STATIONS, RadioState } from '../types';
-import { CloudRain, Flame, Coffee, Image as ImageIcon, Volume2, Palette, Upload, Play, Pause, Radio, Globe, Link as LinkIcon } from 'lucide-react';
+import { CloudRain, Flame, Coffee, Image as ImageIcon, Volume2, Palette, Upload, Play, Pause, Radio, Globe, Link as LinkIcon, Trash2, ImageOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -39,34 +39,77 @@ const CREATIVE_THEMES = [
 export const AmbienceDock: React.FC<Props> = ({ space, updateSpace, visible, radioState, radioControls }) => {
   const [activeMenu, setActiveMenu] = useState<'NONE' | 'AMBIENCE' | 'BACKGROUND' | 'COLOR'>('NONE');
   const [localCustomUrl, setLocalCustomUrl] = useState(radioState.customUrl);
+  const [customImages, setCustomImages] = useState<string[]>([]);
+  const [loadingGallery, setLoadingGallery] = useState(false);
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (visible && activeMenu === 'BACKGROUND') {
+        loadGallery();
+    }
+  }, [visible, activeMenu]);
+
+  const loadGallery = async () => {
+    try {
+        setLoadingGallery(true);
+        // @ts-ignore
+        const images = await window.ipcRenderer.gallery.getImages();
+        setCustomImages(images);
+    } catch(e) { console.error("Failed to load gallery", e) } 
+    finally { setLoadingGallery(false); }
+  };
 
   const toggleMenu = (menu: 'AMBIENCE' | 'BACKGROUND' | 'COLOR') => {
     setActiveMenu(activeMenu === menu ? 'NONE' : menu);
   };
 
+  const handleCustomImageDelete = async (e: React.MouseEvent, url: string) => {
+    e.stopPropagation();
+    if (confirm('Delete this image?')) {
+        // @ts-ignore
+        const success = await window.ipcRenderer.gallery.deleteImage(url);
+        if (success) {
+            setCustomImages(prev => prev.filter(img => img !== url));
+            if (space.backgroundUrl === url) {
+               updateSpace(space.id, { backgroundUrl: DEFAULT_BACKGROUNDS[0] });
+            }
+        }
+    }
+  };
+
   const handleBackgroundChange = (url: string) => {
+    if (brokenImages.has(url)) return; // Prevent clicking broken images
     updateSpace(space.id, { backgroundUrl: url, backgroundType: 'IMAGE' });
+  };
+
+  const handleImageError = (url: string) => {
+    setBrokenImages(prev => new Set(prev).add(url));
   };
 
   const handleColorChange = (color: string) => {
     updateSpace(space.id, { backgroundUrl: color, backgroundType: 'COLOR' });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-            updateSpace(space.id, { 
-                backgroundUrl: event.target.result as string, 
-                backgroundType: 'IMAGE' 
-            });
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const buffer = await file.arrayBuffer();
+        // @ts-ignore
+        const localUrl = await window.ipcRenderer.invoke('save-image', buffer, file.name);
+        
+        // Refresh gallery
+        await loadGallery();
+
+        updateSpace(space.id, { 
+            backgroundUrl: localUrl, 
+            backgroundType: 'IMAGE' 
+        });
+      } catch (err) {
+        console.error('Failed to save image:', err);
+      }
     }
   };
 
@@ -89,7 +132,7 @@ export const AmbienceDock: React.FC<Props> = ({ space, updateSpace, visible, rad
   const activeStation = RADIO_STATIONS.find(s => s.id === radioState.activeStationId);
 
   return (
-    <div className="fixed top-6 right-6 z-[5500] flex flex-col gap-3 items-end">
+    <div className="fixed top-6 right-6 z-[5500] flex flex-col gap-3 items-end no-capture">
       
       {/* Colors */}
       <div className="relative">
@@ -219,14 +262,72 @@ export const AmbienceDock: React.FC<Props> = ({ space, updateSpace, visible, rad
                     />
                 </div>
 
-                <div className="flex gap-2 mb-4 pb-2 border-b border-white/10">
-                  <button onClick={() => updateSpace(space.id, { theme: 'LOFI' })} className={`flex-1 text-xs py-1.5 rounded-lg transition-all ${space.theme === 'LOFI' ? 'bg-white/20 text-white' : 'text-white/50 hover:bg-white/10'}`}>Lofi</button>
-                  <button onClick={() => updateSpace(space.id, { theme: 'REALISTIC' })} className={`flex-1 text-xs py-1.5 rounded-lg transition-all ${space.theme === 'REALISTIC' ? 'bg-white/20 text-white' : 'text-white/50 hover:bg-white/10'}`}>Real</button>
-                </div>
                 <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 pr-1">
-                  {DEFAULT_BACKGROUNDS[space.theme].map((bg, idx) => (
-                    <button key={idx} onClick={() => handleBackgroundChange(bg)} className={`aspect-video rounded-lg overflow-hidden border-2 transition-all ${space.backgroundUrl === bg && space.backgroundType === 'IMAGE' ? 'border-indigo-500 scale-105' : 'border-transparent hover:border-white/30'}`}>
-                      <img src={bg} alt="bg" className="w-full h-full object-cover" />
+                   {/* Custom Gallery Section */}
+                   {customImages.length > 0 && (
+                     <div className="col-span-2 mb-2">
+                        <div className="text-[10px] uppercase font-bold text-white/40 mb-2 px-1">My Wallpapers</div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {customImages.map((imgUrl, idx) => (
+                                <button 
+                                    key={idx} 
+                                    onClick={() => handleBackgroundChange(imgUrl)} 
+                                    className={`aspect-video rounded-lg overflow-hidden border-2 transition-all relative group ${space.backgroundUrl === imgUrl ? 'border-indigo-500 scale-105' : 'border-white/10 hover:border-white/30'}`}
+                                >
+                                    <img 
+                                        src={imgUrl} 
+                                        alt="custom" 
+                                        className={`w-full h-full object-cover ${brokenImages.has(imgUrl) ? 'opacity-0' : ''}`}
+                                        onError={() => handleImageError(imgUrl)} 
+                                    />
+                                    {/* Fallback for broken image */}
+                                    {brokenImages.has(imgUrl) && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/5 -z-10">
+                                            <ImageOff className="text-white/20" size={20} />
+                                        </div>
+                                    )}
+
+                                    {/* Delete Button */}
+                                    <div 
+                                        className="absolute top-1 right-1 p-1.5 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500/80 transition-all cursor-pointer"
+                                        onClick={(e) => handleCustomImageDelete(e, imgUrl)}
+                                    >
+                                        <Trash2 size={12} className="text-white" />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="border-t border-white/10 my-3" />
+                     </div>
+                   )}
+
+                  {/* Standard Backgrounds */}
+                   <div className="col-span-2 text-[10px] uppercase font-bold text-white/40 mb-2 px-1">Suggested</div>
+                   {DEFAULT_BACKGROUNDS.map((bg, idx) => (
+                    <button 
+                        key={idx} 
+                        onClick={() => handleBackgroundChange(bg)} 
+                        disabled={brokenImages.has(bg)}
+                        className={`aspect-video rounded-lg overflow-hidden border-2 transition-all relative ${
+                            space.backgroundUrl === bg && space.backgroundType === 'IMAGE' 
+                                ? 'border-indigo-500 scale-105' 
+                                : brokenImages.has(bg) 
+                                    ? 'border-white/5 cursor-not-allowed opacity-50' 
+                                    : 'border-transparent hover:border-white/30'
+                        }`}
+                    >
+                      <img 
+                        src={bg} 
+                        alt="bg" 
+                        className={`w-full h-full object-cover ${brokenImages.has(bg) ? 'opacity-0' : ''}`}
+                        onError={() => handleImageError(bg)} 
+                      />
+                       {brokenImages.has(bg) && (
+                           <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 bg-white/5">
+                                <ImageOff size={20} />
+                                <span className="text-[9px] mt-1">Not Found</span>
+                           </div>
+                       )}
                     </button>
                   ))}
                 </div>

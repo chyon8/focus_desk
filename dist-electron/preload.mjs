@@ -22,5 +22,9 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
     get: (key) => electron.ipcRenderer.invoke("store:get", key),
     set: (key, value) => electron.ipcRenderer.invoke("store:set", key, value),
     delete: (key) => electron.ipcRenderer.invoke("store:delete", key)
+  },
+  gallery: {
+    getImages: () => electron.ipcRenderer.invoke("get-custom-images"),
+    deleteImage: (url) => electron.ipcRenderer.invoke("delete-custom-image", url)
   }
 });

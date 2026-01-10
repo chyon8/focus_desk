@@ -1,8 +1,87 @@
-import { app, BrowserWindow, ipcMain, WebContentsView, BaseWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, WebContentsView, BaseWindow, protocol, net } from 'electron'
 import path from 'node:path'
+import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import crypto from 'node:crypto'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Register custom protocol for local resources
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'local-resource', privileges: { secure: true, supportFetchAPI: true, standard: true, bypassCSP: true, stream: true } }
+])
+
+// ... (existing code) ...
+
+
+
+// ... (existing IPC handlers) ...
+
+// --- Image Upload Handler ---
+ipcMain.handle('save-image', async (_, arrayBuffer: ArrayBuffer, name: string) => {
+  const userDataPath = app.getPath('userData');
+  const backgroundsDir = path.join(userDataPath, 'backgrounds');
+  
+  if (!fs.existsSync(backgroundsDir)) {
+    fs.mkdirSync(backgroundsDir, { recursive: true });
+  }
+
+  // Create a unique filename to prevent overwrites/caching issues
+  const ext = path.extname(name);
+  const hash = crypto.createHash('md5').update(Buffer.from(arrayBuffer)).digest('hex');
+  const filename = `${hash}${ext}`;
+  const filePath = path.join(backgroundsDir, filename);
+
+  fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+  
+  return `local-resource://backgrounds/${filename}`;
+});
+
+ipcMain.handle('get-custom-images', async () => {
+    const userDataPath = app.getPath('userData');
+    const backgroundsDir = path.join(userDataPath, 'backgrounds');
+    if (!fs.existsSync(backgroundsDir)) return [];
+
+    const files = fs.readdirSync(backgroundsDir);
+    // Filter for image extensions if needed, for now just return all files
+    // Return full local-resource URLs
+    return files.map(file => `local-resource://backgrounds/${file}`);
+});
+
+ipcMain.handle('delete-custom-image', async (_, url: string) => {
+    const filename = url.replace('local-resource://backgrounds/', '');
+    const userDataPath = app.getPath('userData');
+    const filePath = path.join(userDataPath, 'backgrounds', filename);
+    
+    if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return true;
+    }
+    return false;
+});
+
+app.whenReady().then(() => {
+  // Handle 'local-resource' protocol
+  protocol.handle('local-resource', (request) => {
+    const url = request.url.replace('local-resource://', '');
+    // Decode URL to handle spaces/special chars if any (though we use hash)
+    const relativePath = decodeURIComponent(url);
+    
+    // We only serve from userData/backgrounds for now
+    // Expected format: local-resource://backgrounds/filename.jpg
+    // URL actually comes as: local-resource://backgrounds/filename.jpg
+    
+    // Let's strip the 'backgrounds/' prefix if present to map to real dir
+    const cleanPath = relativePath.startsWith('backgrounds/') ? relativePath.replace('backgrounds/', '') : relativePath;
+    
+    const userDataPath = app.getPath('userData');
+    const fullPath = path.join(userDataPath, 'backgrounds', cleanPath);
+
+    return net.fetch('file://' + fullPath);
+  });
+
+  createWindow();
+});
 
 // The built directory structure
 //
@@ -188,4 +267,4 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+

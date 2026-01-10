@@ -18,13 +18,13 @@ interface Props {
 export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace, addSpace, removeSpace, isHidden, isOpen, setIsOpen }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newTheme, setNewTheme] = useState<'LOFI' | 'REALISTIC'>('LOFI');
+  // Removed duplicate declaration
 
   const activeSpace = spaces.find(s => s.id === activeSpaceId);
 
   const handleCreate = () => {
     if (newName.trim()) {
-      addSpace(newName, newTheme);
+      addSpace(newName, 'LOFI'); // Default to LOFI/Generic internally
       setNewName('');
       setIsCreating(false);
     }
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             onClick={() => setIsOpen(true)}
-            className="fixed top-6 left-6 z-[6001] p-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all shadow-lg flex items-center justify-center"
+            className="fixed top-6 left-6 z-[6001] p-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all shadow-lg flex items-center justify-center no-capture"
           >
             <PanelLeft size={20} />
           </motion.button>
@@ -83,7 +83,7 @@ export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -300, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed left-0 top-0 bottom-0 w-64 z-[6000]"
+            className="fixed left-0 top-0 bottom-0 w-64 z-[6000] no-capture"
             id="app-sidebar"
           >
             <div 
@@ -152,18 +152,7 @@ export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace
                     onChange={e => setNewName(e.target.value)}
                   />
                   <div className="flex gap-1.5 mb-2">
-                    <button 
-                      onClick={() => setNewTheme('LOFI')}
-                      className={`flex-1 text-[10px] py-1 rounded-md border ${newTheme === 'LOFI' ? 'bg-indigo-500/20 border-indigo-500/30 ' + (isLightTheme ? 'text-indigo-700' : 'text-white') : (isLightTheme ? 'border-black/5 text-slate-500 hover:bg-black/5' : 'border-white/5 text-white/30 hover:bg-white/5')}`}
-                    >
-                      Lofi
-                    </button>
-                    <button 
-                      onClick={() => setNewTheme('REALISTIC')}
-                      className={`flex-1 text-[10px] py-1 rounded-md border ${newTheme === 'REALISTIC' ? 'bg-indigo-500/20 border-indigo-500/30 ' + (isLightTheme ? 'text-indigo-700' : 'text-white') : (isLightTheme ? 'border-black/5 text-slate-500 hover:bg-black/5' : 'border-white/5 text-white/30 hover:bg-white/5')}`}
-                    >
-                      Real
-                    </button>
+                    {/* Theme selection removed */}
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => setIsCreating(false)} className={`flex-1 py-1 rounded-md text-[10px] ${isLightTheme ? 'text-slate-500 hover:bg-black/5' : 'text-white/40 hover:bg-white/5'}`}>Cancel</button>

@@ -10,6 +10,7 @@ import { KeyboardShortcuts } from './components/KeyboardShortcuts';
 import { ShortcutCheatsheet } from './components/ShortcutCheatsheet';
 import { Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import html2canvas from 'html2canvas';
 
 // Optimized "Fluid" Transition (Slightly faster than before, but still smooth)
 const FLUID_TRANSITION: any = {
@@ -40,7 +41,7 @@ const INITIAL_SPACES: Space[] = [
   {
     id: 'default-2',
     name: 'Deep Work',
-    backgroundUrl: DEFAULT_BACKGROUNDS.LOFI[1],
+    backgroundUrl: DEFAULT_BACKGROUNDS[1],
     backgroundType: 'IMAGE',
     theme: 'LOFI',
     ambience: { volumeRain: 50, volumeFire: 20, volumeCafe: 0 },
@@ -266,8 +267,8 @@ const App: React.FC = () => {
       position: { 
         x: window.innerWidth / 2 - 200 + (Math.random() * 40 - 20), 
         y: window.innerHeight / 2 - 200 + (Math.random() * 40 - 20), 
-        width: type === 'CANVAS' || type === 'NEW_EDITOR' || type === 'KANBAN' ? 500 : type === 'READER' ? 450 : type === 'BROWSER' ? 600 : type === 'PHOTO' || type === 'CLOCK' ? 250 : type === 'CALENDAR' ? 320 : 350, 
-        height: type === 'EDITOR' || type === 'NEW_EDITOR' || type === 'CANVAS' ? 600 : type === 'KANBAN' ? 400 : type === 'READER' ? 480 : type === 'BROWSER' ? 480 : type === 'PHOTO' || type === 'CLOCK' ? 300 : type === 'CALENDAR' ? 340 : 400 
+        width: type === 'CANVAS' || type === 'NEW_EDITOR' || type === 'KANBAN' ? 500 : type === 'READER' ? 450 : type === 'BROWSER' ? 600 : type === 'PHOTO' || type === 'CLOCK' ? 250 : type === 'CALENDAR' ? 320 : type === 'YOUTUBE_MUSIC' ? 375 : 350, 
+        height: type === 'EDITOR' || type === 'NEW_EDITOR' || type === 'CANVAS' ? 600 : type === 'KANBAN' ? 400 : type === 'READER' ? 480 : type === 'BROWSER' ? 480 : type === 'PHOTO' || type === 'CLOCK' ? 300 : type === 'CALENDAR' ? 340 : type === 'YOUTUBE_MUSIC' ? 667 : 400 
       },
       zIndex: maxZ + 1,
       ...getDefaultWidgetData(type)
@@ -381,6 +382,7 @@ const App: React.FC = () => {
       case 'CANVAS': return { title: 'Untitled Easel', elements: [] };
       case 'READER': return { url: '', content: '', isLoading: false };
       case 'PHOTO': return { url: '', caption: '', style: 'POLAROID', frameColor: '#ffffff' };
+      case 'YOUTUBE_MUSIC': return {};
       default: return {};
     }
   }
@@ -482,6 +484,46 @@ const App: React.FC = () => {
 
   const handleArrangeGrid = () => {
     arrangeWidgets('AUTO');
+  };
+
+
+
+  const handleShareDesk = async () => {
+      // Create a temporary watermark element
+      const watermark = document.createElement('div');
+      watermark.innerText = "Focus Desk";
+      watermark.style.position = 'fixed';
+      watermark.style.bottom = '20px';
+      watermark.style.right = '20px';
+      watermark.style.color = 'rgba(255, 255, 255, 0.5)';
+      watermark.style.fontSize = '24px';
+      watermark.style.fontWeight = 'bold';
+      watermark.style.fontFamily = 'sans-serif';
+      watermark.style.zIndex = '9999';
+      watermark.style.pointerEvents = 'none';
+      document.body.appendChild(watermark);
+
+      try {
+          const canvas = await html2canvas(document.body, {
+              useCORS: true,
+              backgroundColor: null, // Transparent background if possible, though body has background
+              ignoreElements: (element) => {
+                  // Ignore elements with specific class or data attribute
+                  if (element.classList.contains('no-capture')) return true;
+                  return false;
+              }
+          });
+
+          // Download
+          const link = document.createElement('a');
+          link.download = `focus-desk-${new Date().toISOString().slice(0,10)}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+      } catch (err) {
+          console.error("Capture failed:", err);
+      } finally {
+          document.body.removeChild(watermark);
+      }
   };
 
   return (
@@ -610,6 +652,7 @@ const App: React.FC = () => {
                     onArrangeWidgets={arrangeWidgets}
                     onOpenInsights={() => setShowInsights(true)}
                     onOpenShortcuts={() => setShowCheatsheet(true)}
+                    onShare={handleShareDesk}
                 />
             </motion.div>
         )}

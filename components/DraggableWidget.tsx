@@ -18,7 +18,8 @@ import {
   ClockWidgetData,
   KanbanWidgetData,
   FocusSessionState,
-  RadioState
+  RadioState,
+  YoutubeMusicWidgetData
 } from '../types';
 import { GlassCard } from './ui/GlassCard';
 import { X, GripHorizontal, ArrowDownRight, Maximize2, Minimize2 } from 'lucide-react';
@@ -36,6 +37,7 @@ import { NewEditorWidget } from './widgets/NewEditorWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { ClockWidget } from './widgets/ClockWidget';
 import { KanbanWidget } from './widgets/KanbanWidget';
+import { YoutubeMusicWidget } from './widgets/YoutubeMusicWidget';
 
 interface Props {
   widget: Widget;
@@ -202,6 +204,16 @@ export const DraggableWidget: React.FC<Props> = ({
       case 'CALENDAR': return <CalendarWidget data={widget as CalendarWidgetData} updateWidget={updateWidget} />;
       case 'CLOCK': return <ClockWidget data={widget as ClockWidgetData} updateWidget={updateWidget} />;
       case 'KANBAN': return <KanbanWidget data={widget as KanbanWidgetData} updateWidget={updateWidget} />;
+      case 'YOUTUBE_MUSIC': return (
+        <YoutubeMusicWidget 
+          data={widget as YoutubeMusicWidgetData} 
+          updateWidget={updateWidget}
+          isMaximized={isMaximized}
+          onToggleMaximize={onToggleMaximize}
+          removeWidget={() => removeWidget(widget.id)}
+          isCovered={isCovered}
+        />
+      );
       default: return null;
     }
   };
@@ -328,7 +340,7 @@ export const DraggableWidget: React.FC<Props> = ({
       >
         
         {/* Header Controls - Hide during Focus Mode (Compact) OR for Browser (Custom Header) */}
-        {!isCompactMode && widget.type !== 'BROWSER' && (
+        {!isCompactMode && widget.type !== 'BROWSER' && widget.type !== 'YOUTUBE_MUSIC' && (
           <div className={`absolute top-0 left-0 right-0 h-10 flex justify-between items-center px-3 z-50 pointer-events-auto transition-opacity ${isPhoto ? 'bg-gradient-to-b from-black/50 to-transparent' : ''} ${isMaximized ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             <div 
               className={`cursor-move p-2 ${controlGripClass} ${isMaximized ? 'opacity-0 pointer-events-none' : ''}`}
@@ -361,7 +373,7 @@ export const DraggableWidget: React.FC<Props> = ({
 
         <div 
           className="flex-1 overflow-hidden pt-0" 
-          style={{ paddingTop: isPhoto || isNewWidget || isCompactMode || widget.type === 'BROWSER' ? 0 : '0.5rem' }}
+          style={{ paddingTop: isPhoto || isNewWidget || isCompactMode || widget.type === 'BROWSER' || widget.type === 'YOUTUBE_MUSIC' ? 0 : '0.5rem' }}
         >
             {renderContent()}
         </div>

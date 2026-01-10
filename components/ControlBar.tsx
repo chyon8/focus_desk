@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Space, WidgetType } from '../types';
 import { 
-  Plus, Maximize2, StickyNote, ListTodo, Timer, Link, Share2, FileText, Globe, LayoutGrid, Grid3x3, Grid2X2, Sparkles, PenTool, BookOpen, Image as ImageIcon, FileSignature, Scroll, Calendar, Clock, Trello, BarChart2, Keyboard
+  Plus, Maximize2, StickyNote, ListTodo, Timer, Link, Share2, FileText, Globe, LayoutGrid, Grid3x3, Grid2X2, Sparkles, PenTool, BookOpen, Image as ImageIcon, FileSignature, Scroll, Calendar, Clock, Trello, BarChart2, Keyboard, Music
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from './ui/GlassCard';
@@ -16,23 +16,20 @@ interface Props {
   onArrangeWidgets: (cols: number | 'AUTO') => void;
   onOpenInsights: () => void;
   onOpenShortcuts: () => void;
+  onShare: () => void;
 }
 
-export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isFocusMode, onArrangeWidgets, onOpenInsights, onOpenShortcuts }) => {
+export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isFocusMode, onArrangeWidgets, onOpenInsights, onOpenShortcuts, onShare }) => {
   const [activeMenu, setActiveMenu] = useState<'NONE' | 'WIDGETS' | 'LAYOUT'>('NONE');
 
   const toggleMenu = (menu: 'WIDGETS' | 'LAYOUT') => {
     setActiveMenu(activeMenu === menu ? 'NONE' : menu);
   };
 
-  const handleShare = () => {
-    const data = JSON.stringify(space, null, 2);
-    navigator.clipboard.writeText(data);
-    alert('Space configuration copied to clipboard!');
-  };
+
 
   return (
-    <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[5500] transition-all duration-500 ${isFocusMode ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
+    <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[5500] transition-all duration-500 no-capture ${isFocusMode ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
       
       {/* Widget Menu */}
       <AnimatePresence>
@@ -55,6 +52,7 @@ export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isF
               { type: 'READER', icon: BookOpen, label: 'Reader' },
               { type: 'TIMER', icon: Timer, label: 'Timer' },
               { type: 'BROWSER', icon: Globe, label: 'Browse' },
+              { type: 'YOUTUBE_MUSIC', icon: Music, label: 'Music' },
               { type: 'BOOKMARKS', icon: Link, label: 'Links' },
             ].map((item) => (
               <button
@@ -147,6 +145,16 @@ export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isF
             </span>
           </button>
 
+
+
+          <button 
+            onClick={onShare}
+            className="p-2 rounded-xl text-white/70 hover:bg-white/20 transition-all"
+            title="Share Desk Snapshot"
+          >
+            <Share2 size={20} />
+          </button>
+
           <div className="w-px h-6 bg-white/10 mx-1" />
 
           <button 
@@ -155,13 +163,6 @@ export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isF
             title="Enter Focus Mode"
           >
             <Maximize2 size={20} />
-          </button>
-           <button 
-            onClick={handleShare}
-            className="p-2 rounded-xl text-white/70 hover:bg-white/20 transition-all"
-            title="Share Space"
-          >
-            <Share2 size={20} />
           </button>
         </div>
 

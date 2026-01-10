@@ -13,9 +13,14 @@ export const BackgroundLayer: React.FC<Props> = ({ url, type, dimmed }) => {
       
       {/* Image Mode */}
       {type === 'IMAGE' && (
-        <div 
-          className={`w-full h-full bg-cover bg-center transition-all duration-700 ease-in-out transform scale-105`}
-          style={{ backgroundImage: `url(${url})` }}
+        <img
+          key={url}
+          src={url}
+          alt="background"
+          className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out transform scale-105`}
+          onError={(e) => {
+            e.currentTarget.style.opacity = '0';
+          }}
         />
       )}
 
