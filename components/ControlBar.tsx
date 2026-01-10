@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Space, WidgetType } from '../types';
 import { 
-  Plus, Maximize2, StickyNote, ListTodo, Timer, Link, Share2, FileText, Globe, LayoutGrid, Grid3x3, Grid2X2, Sparkles, PenTool, BookOpen, Image as ImageIcon, FileSignature, Scroll, Calendar, Clock, Trello, BarChart2
+  Plus, Maximize2, StickyNote, ListTodo, Timer, Link, Share2, FileText, Globe, LayoutGrid, Grid3x3, Grid2X2, Sparkles, PenTool, BookOpen, Image as ImageIcon, FileSignature, Scroll, Calendar, Clock, Trello, BarChart2, Keyboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from './ui/GlassCard';
@@ -15,9 +15,10 @@ interface Props {
   isFocusMode: boolean;
   onArrangeWidgets: (cols: number | 'AUTO') => void;
   onOpenInsights: () => void;
+  onOpenShortcuts: () => void;
 }
 
-export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isFocusMode, onArrangeWidgets, onOpenInsights }) => {
+export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isFocusMode, onArrangeWidgets, onOpenInsights, onOpenShortcuts }) => {
   const [activeMenu, setActiveMenu] = useState<'NONE' | 'WIDGETS' | 'LAYOUT'>('NONE');
 
   const toggleMenu = (menu: 'WIDGETS' | 'LAYOUT') => {
@@ -133,6 +134,17 @@ export const ControlBar: React.FC<Props> = ({ space, addWidget, toggleFocus, isF
             title="Focus Insights"
           >
             <BarChart2 size={20} />
+          </button>
+
+          <button 
+            onClick={onOpenShortcuts}
+            className="p-2 rounded-xl text-white/70 hover:bg-white/20 transition-all group relative"
+            title="Keyboard Shortcuts (?)"
+          >
+            <Keyboard size={20} />
+            <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 rounded text-[10px] text-white/60 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              Press ? for shortcuts
+            </span>
           </button>
 
           <div className="w-px h-6 bg-white/10 mx-1" />

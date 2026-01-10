@@ -40,6 +40,7 @@ import { KanbanWidget } from './widgets/KanbanWidget';
 interface Props {
   widget: Widget;
   isMaximized: boolean;
+  isActive?: boolean; // NEW: Indicates if this widget is currently focused
   onToggleMaximize: () => void;
   containerRef: React.RefObject<HTMLDivElement>;
   updateWidget: (id: string, data: any) => void;
@@ -63,6 +64,7 @@ interface Props {
 export const DraggableWidget: React.FC<Props> = ({ 
   widget, 
   isMaximized,
+  isActive = false,
   onToggleMaximize,
   containerRef, 
   updateWidget, 
@@ -233,6 +235,12 @@ export const DraggableWidget: React.FC<Props> = ({
       glassOverrideClass = '!bg-[#0F0F12] !border-white/10 !shadow-lg !overflow-hidden !backdrop-blur-xl';
   }
 
+  // Active Widget Highlight
+  let activeRingClass = '';
+  if (isActive && !isCompactMode && !isMaximized) {
+    activeRingClass = 'ring-2 ring-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.5)]';
+  }
+
   // Photo widgets need overflow visible for the pin to stick out
   const overflowClass = isPhoto ? 'overflow-visible' : 'overflow-hidden';
 
@@ -316,7 +324,7 @@ export const DraggableWidget: React.FC<Props> = ({
     >
       <GlassCard 
         style={{ borderRadius: renderRadius }}
-        className={`w-full h-full relative group flex flex-col ${overflowClass} transition-shadow duration-200 border-white/20 ${!isMaximized && !isPhoto && !isCompactMode && 'hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]'} ${isMaximized ? '!rounded-none !border-0' : ''} ${glassOverrideClass}`}
+        className={`w-full h-full relative group flex flex-col ${overflowClass} transition-all duration-200 border-white/20 ${!isMaximized && !isPhoto && !isCompactMode && 'hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]'} ${isMaximized ? '!rounded-none !border-0' : ''} ${glassOverrideClass} ${activeRingClass}`}
       >
         
         {/* Header Controls - Hide during Focus Mode (Compact) OR for Browser (Custom Header) */}

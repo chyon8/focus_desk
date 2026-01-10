@@ -6,6 +6,8 @@ import { Sidebar } from './components/Sidebar';
 import { ControlBar } from './components/ControlBar';
 import { AmbienceDock } from './components/AmbienceDock';
 import { FocusInsights } from './components/FocusInsights';
+import { KeyboardShortcuts } from './components/KeyboardShortcuts';
+import { ShortcutCheatsheet } from './components/ShortcutCheatsheet';
 import { Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -91,6 +93,8 @@ const App: React.FC = () => {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [maximizedWidgetId, setMaximizedWidgetId] = useState<string | null>(null);
+  const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+  const [showCheatsheet, setShowCheatsheet] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -293,6 +297,7 @@ const App: React.FC = () => {
   const bringToFront = (widgetId: string) => {
     const maxZ = Math.max(...activeSpace.widgets.map(w => w.zIndex || 0), 0);
     updateWidget(widgetId, { zIndex: maxZ + 1 });
+    setActiveWidgetId(widgetId); // Set as active when brought to front
   };
 
   const toggleMaximize = (widgetId: string) => {
@@ -453,8 +458,49 @@ const App: React.FC = () => {
       handleStopSession();
   };
 
+  // Keyboard shortcut handlers
+  const handleFocusWidgetByIndex = (index: number) => {
+    if (index < activeSpace.widgets.length) {
+      const widget = activeSpace.widgets[index];
+      setActiveWidgetId(widget.id);
+      bringToFront(widget.id);
+    }
+  };
+
+  const handleCloseActiveWidget = () => {
+    if (activeWidgetId) {
+      removeWidget(activeWidgetId);
+      setActiveWidgetId(null);
+    }
+  };
+
+  const handleToggleActiveMaximize = () => {
+    if (activeWidgetId) {
+      toggleMaximize(activeWidgetId);
+    }
+  };
+
+  const handleArrangeGrid = () => {
+    arrangeWidgets('AUTO');
+  };
+
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-sans selection:bg-indigo-500/30">
+      {/* Keyboard Shortcuts Handler */}
+      <KeyboardShortcuts
+        activeWidgetId={activeWidgetId}
+        widgets={activeSpace.widgets}
+        onAddWidget={addWidget}
+        onCloseActiveWidget={handleCloseActiveWidget}
+        onToggleMaximize={handleToggleActiveMaximize}
+        onFocusWidget={handleFocusWidgetByIndex}
+        onToggleFocusMode={() => setIsFocusMode(!isFocusMode)}
+        onClearFocus={() => setActiveWidgetId(null)}
+        onToggleCheatsheet={() => setShowCheatsheet(!showCheatsheet)}
+        onArrangeGrid={handleArrangeGrid}
+        isFocusMode={isFocusMode}
+      />
+
       {/* Custom Draggable Title Bar Region (Top 24px) */}
       <div className="fixed top-0 left-0 right-0 h-6 z-[9000] titlebar-drag-region" />
       
@@ -485,6 +531,7 @@ const App: React.FC = () => {
               key={widget.id}
               widget={widget}
               isMaximized={maximizedWidgetId === widget.id}
+              isActive={activeWidgetId === widget.id}
               onToggleMaximize={() => toggleMaximize(widget.id)}
               containerRef={containerRef}
               updateWidget={updateWidget}
@@ -562,6 +609,7 @@ const App: React.FC = () => {
                     isFocusMode={isFocusMode}
                     onArrangeWidgets={arrangeWidgets}
                     onOpenInsights={() => setShowInsights(true)}
+                    onOpenShortcuts={() => setShowCheatsheet(true)}
                 />
             </motion.div>
         )}
@@ -587,6 +635,11 @@ const App: React.FC = () => {
           </span>
         </button>
       )}
+
+      <ShortcutCheatsheet 
+        isOpen={showCheatsheet}
+        onClose={() => setShowCheatsheet(false)}
+      />
 
     </div>
   );
