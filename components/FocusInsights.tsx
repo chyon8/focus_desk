@@ -29,7 +29,7 @@ export const FocusInsights: React.FC<Props> = ({ stats, onClose }) => {
 
     // Current Stats
     const todayKey = getLocalDayKey(new Date());
-    const todayStats = stats[todayKey] || { focusSeconds: 0, tasksCompleted: 0 };
+    const todayStats = stats[todayKey] || { focusSeconds: 0, tasksCompleted: 0, appSessionSeconds: 0 };
     
     // Last 7 Days for Bar Chart
     const getLast7Days = () => {
@@ -102,7 +102,7 @@ export const FocusInsights: React.FC<Props> = ({ stats, onClose }) => {
 
                 <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <div className="p-6 rounded-2xl bg-[#18181b] border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -125,6 +125,18 @@ export const FocusInsights: React.FC<Props> = ({ stats, onClose }) => {
                             </div>
                             <div className="text-xs text-white/30 font-medium">
                                 Completed today
+                            </div>
+                        </div>
+                        <div className="p-6 rounded-2xl bg-[#18181b] border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="text-amber-300 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Clock size={12} /> Time in App
+                            </div>
+                            <div className="text-4xl font-mono font-bold text-white mb-1 tracking-tight">
+                                {formatDuration(todayStats.appSessionSeconds)}
+                            </div>
+                            <div className="text-xs text-white/30 font-medium">
+                                Session time today
                             </div>
                         </div>
                     </div>

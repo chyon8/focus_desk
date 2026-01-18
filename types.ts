@@ -178,6 +178,13 @@ export interface FocusSessionState {
   activeWidgetId?: string; // ID of the widget that started the session
 }
 
+// App Session Timer - tracks time spent in the app
+export interface AppSessionState {
+  isTracking: boolean;       // Currently tracking time
+  sessionStartTime: number;  // Timestamp when session started (ms)
+  accumulatedTime: number;   // Accumulated seconds from pauses
+}
+
 export interface RadioStation {
     id: string;
     name: string;
@@ -199,6 +206,7 @@ export interface DayStats {
     date: string; // YYYY-MM-DD
     focusSeconds: number;
     tasksCompleted: number;
+    appSessionSeconds: number; // Total time spent in the app
 }
 
 export interface FocusStats {

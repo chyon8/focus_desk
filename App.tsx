@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Space, Widget, WidgetType, DEFAULT_BACKGROUNDS, FocusSessionState, RadioState, RADIO_STATIONS, FocusStats } from './types';
+import { Space, Widget, WidgetType, DEFAULT_BACKGROUNDS, FocusSessionState, RadioState, RADIO_STATIONS, FocusStats, AppSessionState } from './types';
 import { BackgroundLayer } from './components/BackgroundLayer';
 import { DraggableWidget } from './components/DraggableWidget';
 import { Sidebar } from './components/Sidebar';
@@ -66,6 +66,13 @@ const App: React.FC = () => {
 
   // Focus Stats Logic
   const [focusStats, setFocusStats] = useState<FocusStats>({});
+
+  // App Session Timer - tracks total time spent in app
+  const [appSession, setAppSession] = useState<AppSessionState>({
+    isTracking: false,
+    sessionStartTime: 0,
+    accumulatedTime: 0
+  });
 
   const [showInsights, setShowInsights] = useState(false);
 
@@ -157,6 +164,116 @@ const App: React.FC = () => {
         localStorage.setItem('focus-window-stats', JSON.stringify(focusStats));
       }
   }, [focusStats, isLoaded]);
+
+  // Auto-start app session tracking when app loads
+  useEffect(() => {
+    if (!isLoaded) return;
+    // Start tracking immediately when app loads (only if window is focused)
+    setAppSession({
+      isTracking: document.hasFocus(),
+      sessionStartTime: Date.now(),
+      accumulatedTime: 0
+    });
+  }, [isLoaded]);
+
+  // Pause/Resume session tracking on window focus/blur
+  useEffect(() => {
+    const handleFocus = () => {
+      // Resume tracking: start new session period
+      setAppSession(prev => ({
+        ...prev,
+        isTracking: true,
+        sessionStartTime: Date.now()
+      }));
+    };
+
+    const handleBlur = () => {
+      // Pause tracking: save accumulated time
+      setAppSession(prev => {
+        if (!prev.isTracking) return prev;
+        const elapsed = Math.floor((Date.now() - prev.sessionStartTime) / 1000);
+        return {
+          ...prev,
+          isTracking: false,
+          accumulatedTime: prev.accumulatedTime + elapsed
+        };
+      });
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Calculate current session time
+  const getCurrentSessionTime = () => {
+    if (!appSession.isTracking) return appSession.accumulatedTime;
+    const elapsed = Math.floor((Date.now() - appSession.sessionStartTime) / 1000);
+    return appSession.accumulatedTime + elapsed;
+  };
+
+  // Save session time on app close (beforeunload)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const totalSeconds = getCurrentSessionTime();
+      if (totalSeconds > 0) {
+        // Synchronously save to storage before app closes
+        const today = getTodayKey();
+        const statsStr = window.store ? null : localStorage.getItem('focus-window-stats');
+        const currentStats: FocusStats = statsStr ? JSON.parse(statsStr) : focusStats;
+        const current = currentStats[today] || { focusSeconds: 0, tasksCompleted: 0, appSessionSeconds: 0, date: today };
+        const updatedStats = {
+          ...currentStats,
+          [today]: {
+            ...current,
+            appSessionSeconds: current.appSessionSeconds + totalSeconds
+          }
+        };
+        if (window.store) {
+          window.store.set('focus-window-stats', updatedStats);
+        } else {
+          localStorage.setItem('focus-window-stats', JSON.stringify(updatedStats));
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [appSession, focusStats]);
+
+  // Periodic save every minute (for crash protection) - saves delta only
+  const lastSavedTimeRef = useRef(0);
+  useEffect(() => {
+    if (!appSession.isTracking && appSession.accumulatedTime === 0) return;
+    
+    const interval = setInterval(() => {
+      const currentTotal = getCurrentSessionTime();
+      const delta = currentTotal - lastSavedTimeRef.current;
+      if (delta > 0) {
+        recordAppSessionTime(delta);
+        lastSavedTimeRef.current = currentTotal;
+      }
+    }, 60000); // Every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [appSession.isTracking]);
+
+  // Real-time session timer display (updates every second)
+  const [displaySessionTime, setDisplaySessionTime] = useState(0);
+  useEffect(() => {
+    const updateDisplay = () => {
+      setDisplaySessionTime(getCurrentSessionTime());
+    };
+    
+    updateDisplay(); // Initial update
+    const interval = setInterval(updateDisplay, 1000);
+    
+    return () => clearInterval(interval);
+  }, [appSession.isTracking, appSession.sessionStartTime, appSession.accumulatedTime]);
 
   // Sync Focus Mode with Session
   // REVISED LOGIC: If session is active BUT paused, exit focus mode (show UI).
@@ -392,7 +509,7 @@ const App: React.FC = () => {
       if (seconds <= 0) return;
       const today = getTodayKey();
       setFocusStats(prev => {
-          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, date: today };
+          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, appSessionSeconds: 0, date: today };
           return {
               ...prev,
               [today]: {
@@ -406,12 +523,28 @@ const App: React.FC = () => {
   const recordTaskCompletion = () => {
       const today = getTodayKey();
       setFocusStats(prev => {
-          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, date: today };
+          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, appSessionSeconds: 0, date: today };
           return {
               ...prev,
               [today]: {
                   ...current,
                   tasksCompleted: current.tasksCompleted + 1
+              }
+          };
+      });
+  };
+
+  // Record app session time to stats
+  const recordAppSessionTime = (seconds: number) => {
+      if (seconds <= 0) return;
+      const today = getTodayKey();
+      setFocusStats(prev => {
+          const current = prev[today] || { focusSeconds: 0, tasksCompleted: 0, appSessionSeconds: 0, date: today };
+          return {
+              ...prev,
+              [today]: {
+                  ...current,
+                  appSessionSeconds: current.appSessionSeconds + seconds
               }
           };
       });
@@ -610,6 +743,8 @@ const App: React.FC = () => {
                     isHidden={false}
                     isOpen={isSidebarOpen}
                     setIsOpen={setIsSidebarOpen}
+                    sessionTime={displaySessionTime}
+                    onOpenInsights={() => setShowInsights(true)}
                 />
             </motion.div>
         )}

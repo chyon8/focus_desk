@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Space } from '../types';
-import { Layout, Plus, Trash2, Home, BookOpen, Coffee, Monitor, ChevronLeft, PanelLeft } from 'lucide-react';
+import { Layout, Plus, Trash2, Home, BookOpen, Coffee, Monitor, ChevronLeft, PanelLeft, Clock, BarChart2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -13,14 +13,27 @@ interface Props {
   isHidden: boolean;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  sessionTime: number;
+  onOpenInsights: () => void;
 }
 
-export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace, addSpace, removeSpace, isHidden, isOpen, setIsOpen }) => {
+export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace, addSpace, removeSpace, isHidden, isOpen, setIsOpen, sessionTime, onOpenInsights }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   // Removed duplicate declaration
 
   const activeSpace = spaces.find(s => s.id === activeSpaceId);
+
+  // Format seconds to HH:MM:SS or MM:SS
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -115,6 +128,24 @@ export const Sidebar: React.FC<Props> = ({ spaces, activeSpaceId, setActiveSpace
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-1 scrollbar-hide px-1 relative z-10">
+                {/* Session Timer Section */}
+                <button
+                  onClick={onOpenInsights}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-4 transition-all ${isLightTheme ? 'bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30'}`}
+                  title="Open Focus Insights"
+                >
+                  <div className={`p-2 rounded-lg ${isLightTheme ? 'bg-amber-500/20 text-amber-600' : 'bg-amber-500/20 text-amber-400'}`}>
+                    <Clock size={16} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className={`text-[10px] font-bold uppercase tracking-wider ${isLightTheme ? 'text-amber-600/60' : 'text-amber-400/60'}`}>Session</div>
+                    <div className={`text-lg font-mono font-bold tabular-nums ${isLightTheme ? 'text-amber-700' : 'text-amber-300'}`}>
+                      {formatTime(sessionTime)}
+                    </div>
+                  </div>
+                  <BarChart2 size={16} className={isLightTheme ? 'text-amber-500/50' : 'text-amber-400/50'} />
+                </button>
+
                 <div className={`text-[10px] font-bold uppercase tracking-widest px-3 mb-2 ${textColorMuted}`}>My Spaces</div>
                 {spaces.map(space => (
                   <button
