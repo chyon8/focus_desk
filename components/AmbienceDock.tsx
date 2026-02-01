@@ -303,31 +303,22 @@ export const AmbienceDock: React.FC<Props> = ({ space, updateSpace, visible, rad
 
                   {/* Standard Backgrounds */}
                    <div className="col-span-2 text-[10px] uppercase font-bold text-white/40 mb-2 px-1">Suggested</div>
-                   {DEFAULT_BACKGROUNDS.map((bg, idx) => (
+                   {DEFAULT_BACKGROUNDS.filter(bg => !brokenImages.has(bg)).map((bg, idx) => (
                     <button 
                         key={idx} 
                         onClick={() => handleBackgroundChange(bg)} 
-                        disabled={brokenImages.has(bg)}
                         className={`aspect-video rounded-lg overflow-hidden border-2 transition-all relative ${
                             space.backgroundUrl === bg && space.backgroundType === 'IMAGE' 
                                 ? 'border-indigo-500 scale-105' 
-                                : brokenImages.has(bg) 
-                                    ? 'border-white/5 cursor-not-allowed opacity-50' 
-                                    : 'border-transparent hover:border-white/30'
+                                : 'border-transparent hover:border-white/30'
                         }`}
                     >
                       <img 
                         src={bg} 
                         alt="bg" 
-                        className={`w-full h-full object-cover ${brokenImages.has(bg) ? 'opacity-0' : ''}`}
+                        className="w-full h-full object-cover"
                         onError={() => handleImageError(bg)} 
                       />
-                       {brokenImages.has(bg) && (
-                           <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 bg-white/5">
-                                <ImageOff size={20} />
-                                <span className="text-[9px] mt-1">Not Found</span>
-                           </div>
-                       )}
                     </button>
                   ))}
                 </div>

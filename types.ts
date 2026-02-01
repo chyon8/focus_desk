@@ -246,6 +246,9 @@ export const RADIO_STATIONS: RadioStation[] = [
 
 // Restored original backgrounds as requested, merged into a single list
 export const DEFAULT_BACKGROUNDS = [
+    '/wallpapers/lofi_cat.jpeg',
+    '/wallpapers/lofi_fireplace.jpeg',
+    '/wallpapers/sunset_landscape.png',
     'https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=2070&auto=format&fit=crop', // Cozy Room
     'https://images.unsplash.com/photo-1518558997970-4dadc13c87e6?q=80&w=2070&auto=format&fit=crop', // Night City
     'https://images.unsplash.com/photo-1629196911514-cfd8d628b26e?q=80&w=2148&auto=format&fit=crop', // Illustration style
